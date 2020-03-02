@@ -6,6 +6,7 @@ from Crypto.Hash import SHA1
 from Crypto.Util.Padding import pad
 from base64 import b16decode, b64decode, b64encode
 import requests
+import struct
 import json
 from uuid import UUID
 from .widevine_pb2 import WidevineCencHeader
@@ -89,7 +90,9 @@ def get_keys(content_id, url, tracks, policy, signer, signer_key=None,
     return response
 
 
-def generate_widevine_data(key_ids=None, provider=None, content_id=None):
+def generate_widevine_data(
+        key_ids=None, provider=None, content_id=None, protection_scheme='cenc'
+):
     """
     Generate basic Widevine PSSH data
 
@@ -123,10 +126,21 @@ def generate_widevine_data(key_ids=None, provider=None, content_id=None):
         else:
             raise TypeError("content_id should be string or bytes")
 
+    # 'cenc' is the default, so omitted to save bytes.
+    if protection_scheme and protection_scheme != "cenc":
+        if protection_scheme not in ["cenc", "cens", "cbc1", "cbcs"]:
+            raise ValueError(
+                "algorithm must be one of 'cenc', 'cens', 'cbc1' or 'cbcs'.")
+        protection_scheme = bytes(protection_scheme, "UTF-8")
+        pssh_data.protection_scheme = struct.unpack('>L', protection_scheme)[0]
+
     return pssh_data
 
 
-def generate_pssh(key_ids=None, provider=None, content_id=None, version=1):
+def generate_pssh(
+        key_ids=None, provider=None, content_id=None, version=1,
+        protection_scheme='cenc'
+):
     """
     Generate basic Widevine PSSH box
 
@@ -145,7 +159,8 @@ def generate_pssh(key_ids=None, provider=None, content_id=None, version=1):
             key_id = key_id.bytes
         kids.append(key_id)
 
-    pssh_data = generate_widevine_data(kids, provider, content_id)
+    pssh_data = generate_widevine_data(
+        kids, provider, content_id, protection_scheme)
 
     pssh = PSSH_BOX.build({
         "version": version,

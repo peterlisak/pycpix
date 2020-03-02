@@ -83,6 +83,14 @@ Outputs:
         default=1,
         type=int)
     parser.add_argument(
+        "--protection-scheme",
+        action="store",
+        dest="protection_scheme",
+        choices=["cenc", "cbcs", "cens", "cbc1"],
+        help="Set the protection scheme of the Widevine PSSH data",
+        required=False,
+        default="cenc")
+    parser.add_argument(
         "--log_level",
         action="store",
         dest="log_level",
@@ -104,7 +112,8 @@ Outputs:
         key_ids.append(key_id)
 
     pssh = widevine.generate_pssh(
-        key_ids, args.provider, args.content_id, args.pssh_version)
+        key_ids, args.provider, args.content_id, args.pssh_version,
+        args.protection_scheme)
 
     drm_specific_data = '--widevine.drm_specific_data={}'.format(
         str(b64encode(pssh), 'ascii'))
